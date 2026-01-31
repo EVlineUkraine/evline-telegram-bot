@@ -8,22 +8,17 @@ from telegram.ext import (
     CommandHandler,
     MessageHandler,
     ContextTypes,
-    filters,
+    filters
 )
 
 # =========================
 # ENV VARIABLES
 # =========================
-
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID")
-SHEET_NAME = os.getenv("SHEET_NAME", "Requests")
+GOOGLE_CREDS_FILE = os.getenv("GOOGLE_CREDS_FILE")
 
-GOOGLE_CREDS_FILE = "/etc/secrets/google_creds.json"
-
-# =========================
-# VALIDATION
-# =========================
+SHEET_NAME = "Requests"
 
 if not BOT_TOKEN:
     raise RuntimeError("Missing env BOT_TOKEN")
@@ -31,13 +26,14 @@ if not BOT_TOKEN:
 if not SPREADSHEET_ID:
     raise RuntimeError("Missing env SPREADSHEET_ID")
 
-if not os.path.exists(GOOGLE_CREDS_FILE):
-    raise RuntimeError("Google credentials file not found")
+if not GOOGLE_CREDS_FILE:
+    raise RuntimeError(
+        "Missing Google credentials: provide GOOGLE_CREDS_FILE as Secret File"
+    )
 
 # =========================
-# GOOGLE SHEETS CONNECTION
+# GOOGLE SHEETS SETUP
 # =========================
-
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 credentials = Credentials.from_service_account_file(
@@ -49,23 +45,22 @@ gc = gspread.authorize(credentials)
 sheet = gc.open_by_key(SPREADSHEET_ID).worksheet(SHEET_NAME)
 
 # =========================
-# TELEGRAM HANDLERS
+# BOT HANDLERS
 # =========================
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Вітаю 👋\n\n"
-        "Щоб підібрати запчастину, напишіть, будь ласка:\n"
+        "Щоб ми швидко підібрали запчастину, напишіть, будь ласка:\n"
         "• марку та модель авто\n"
         "• яку запчастину шукаєте\n"
         "• VIN-код (якщо є)\n\n"
-        "Менеджер вже переглядає ваш запит 👨‍💻"
+        "Менеджер EVLine вже на зв’язку 🚗🔧"
     )
 
 async def brands(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Працюємо з брендами:\n"
-        "BYD, Xiaomi, Lynk & Co, Fangchengbao (Leopard), "
+        "BYD, Xiaomi, Lynk & Co, Fangchengbao (Leopard),\n"
         "ZEEKR, NIO, XPENG, Li Auto, AITO, AVATR, Denza."
     )
 
@@ -85,13 +80,12 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         "Дякуємо 🙌\n"
-        "Запит прийнято в роботу, вже шукаємо."
+        "Запит прийнято в роботу — вже шукаємо потрібну запчастину."
     )
 
 # =========================
 # MAIN
 # =========================
-
 def main():
     app = Application.builder().token(BOT_TOKEN).build()
 
@@ -101,6 +95,7 @@ def main():
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message)
     )
 
+    print("🤖 EVLine bot started")
     app.run_polling()
 
 if __name__ == "__main__":
